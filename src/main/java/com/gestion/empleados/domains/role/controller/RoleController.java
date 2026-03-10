@@ -31,4 +31,11 @@ public class RoleController {
         RoleDTO response = roleService.create(dto);
         return ResponseEntity.ok(response);
     }
+
+    @GetMapping("/{id}")
+    @Operation(summary = "Obtiene los roles por id", security = { @SecurityRequirement(name = "bearer-jwt") })
+    public ResponseEntity<RoleDTO> getById(@PathVariable Long id) {
+        RoleDTO response = roleService.getById(id);
+        return ResponseEntity.ok(response);
+    }
 }
