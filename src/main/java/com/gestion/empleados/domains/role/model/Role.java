@@ -1,13 +1,17 @@
 package com.gestion.empleados.domains.role.model;
 
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
+import jakarta.persistence.*;
+import lombok.Data;
 
+import java.math.BigDecimal;
+
+@Data
+@Entity
+@Table(name = "roles")
 public class Role {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    private String Name;
-    private double salaryHour;
+    private String name;
+    private BigDecimal salaryHour;
 }
