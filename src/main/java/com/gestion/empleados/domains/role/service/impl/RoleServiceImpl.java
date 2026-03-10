@@ -1,5 +1,6 @@
 package com.gestion.empleados.domains.role.service.impl;
 
+import com.gestion.empleados.domains.employee.repository.EmployeeRepository;
 import com.gestion.empleados.domains.role.dto.request.RoleDTOin;
 import com.gestion.empleados.domains.role.dto.response.RoleDTO;
 import com.gestion.empleados.domains.role.error.RoleError;
@@ -14,17 +15,21 @@ import com.gestion.empleados.shared.config.AuthSupport;
 import com.gestion.empleados.shared.exception.custom.BadRequestException;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 public class RoleServiceImpl implements RoleService {
 
     private final RoleRepository roleRepository;
     private final UserRepository userRepository;
+    private final EmployeeRepository employeeRepository;
 
-    public RoleServiceImpl(RoleRepository roleRepository, UserRepository userRepository) {
+    public RoleServiceImpl(RoleRepository roleRepository, UserRepository userRepository, EmployeeRepository employeeRepository) {
         this.roleRepository = roleRepository;
         this.userRepository = userRepository;
+        this.employeeRepository = employeeRepository;
     }
 
     @Override
@@ -43,6 +48,31 @@ public class RoleServiceImpl implements RoleService {
     public RoleDTO getById(Long id){
         Role role = getRole(id);
         return RoleMapper.MAPPER.toDto(role);
+    }
+
+    @Override
+    public List<RoleDTO> getAll() {
+        return roleRepository.findAll()
+                .stream()
+                .map(RoleMapper.MAPPER::toDto)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public RoleDTO update(Long id, RoleDTOin dto) {
+        Role role = getRole(id);
+        role.setName(dto.getName());
+        role.setSalaryHour(dto.getSalaryHour());
+        return RoleMapper.MAPPER.toDto(roleRepository.save(role));
+    }
+
+    @Override
+    public void delete(Long id) {
+        Role role = getRole(id);
+        if (!employeeRepository.findAllByRoleIdAndActiveTrue(id).isEmpty()) {
+            throw new BadRequestException(RoleError.HAS_EMPLOYEES);
+        }
+        roleRepository.delete(role);
     }
 
     private Role getRole(Long id){
