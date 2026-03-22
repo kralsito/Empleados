@@ -1,8 +1,13 @@
 package com.gestion.empleados.domains.payment.controller;
 
+import com.gestion.empleados.domains.payment.dto.request.ApplyPaymentDTOin;
 import com.gestion.empleados.domains.payment.dto.request.PaymentDTOin;
+import com.gestion.empleados.domains.payment.dto.response.ApplyPaymentDTO;
 import com.gestion.empleados.domains.payment.dto.response.PaymentDTO;
+import com.gestion.empleados.domains.payment.dto.response.PaymentDetailDTO;
+import com.gestion.empleados.domains.payment.service.PaymentApplyService;
 import com.gestion.empleados.domains.payment.service.PaymentService;
+import com.gestion.empleados.domains.worklog.dto.response.WorkLogDetailDTO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -21,6 +26,8 @@ import java.util.List;
 public class PaymentController {
 
     private final PaymentService paymentService;
+    private final PaymentApplyService paymentApplyService;
+
 
     @PostMapping
     @Operation(summary = "Crea un pago", security = { @SecurityRequirement(name = "bearer-jwt") })
@@ -46,12 +53,6 @@ public class PaymentController {
         return ResponseEntity.ok(paymentService.getAll());
     }
 
-    @GetMapping("/employee/{employeeId}")
-    @Operation(summary = "Lista los pagos de un empleado", security = { @SecurityRequirement(name = "bearer-jwt") })
-    public ResponseEntity<List<PaymentDTO>> getByEmployee(@PathVariable Long employeeId) {
-        return ResponseEntity.ok(paymentService.getByEmployee(employeeId));
-    }
-
     @GetMapping("/{id}")
     @Operation(summary = "Obtiene un pago por id", security = { @SecurityRequirement(name = "bearer-jwt") })
     public ResponseEntity<PaymentDTO> getById(@PathVariable Long id) {
@@ -63,5 +64,24 @@ public class PaymentController {
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         paymentService.delete(id);
         return ResponseEntity.noContent().build();
+    }
+
+
+    @PostMapping("/apply")
+    @Operation(summary = "Aplica un pago con distribución FIFO", security = { @SecurityRequirement(name = "bearer-jwt") })
+    public ResponseEntity<ApplyPaymentDTO> apply(@Valid @RequestBody ApplyPaymentDTOin dto) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(paymentApplyService.apply(dto));
+    }
+
+    @GetMapping("/employee/{employeeId}/worklogs")
+    @Operation(summary = "Obtiene worklogs con estado de pago por empleado", security = { @SecurityRequirement(name = "bearer-jwt") })
+    public ResponseEntity<List<WorkLogDetailDTO>> getWorklogsForEmployee(@PathVariable Long employeeId) {
+        return ResponseEntity.ok(paymentApplyService.getWorklogsForEmployee(employeeId));
+    }
+
+    @GetMapping("/employee/{employeeId}")
+    @Operation(summary = "Obtiene historial de pagos por empleado", security = { @SecurityRequirement(name = "bearer-jwt") })
+    public ResponseEntity<List<PaymentDetailDTO>> getPaymentsForEmployee(@PathVariable Long employeeId) {
+        return ResponseEntity.ok(paymentApplyService.getPaymentsForEmployee(employeeId));
     }
 }

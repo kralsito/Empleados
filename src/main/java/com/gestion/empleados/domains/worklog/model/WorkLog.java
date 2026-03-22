@@ -2,12 +2,14 @@ package com.gestion.empleados.domains.worklog.model;
 
 import com.gestion.empleados.domains.employee.model.Employee;
 import jakarta.persistence.*;
+import lombok.Builder;
 import lombok.Data;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
 @Data
+@Builder
 @Entity
 @Table(name = "work_logs")
 public class WorkLog {
@@ -20,7 +22,12 @@ public class WorkLog {
     private Employee employee;
 
     private LocalDate date;
+    private String description;
     private BigDecimal hoursWorked;
     private BigDecimal salaryHourSnapshot;
     private BigDecimal totalDay;
+
+    @Builder.Default
+    @Column(nullable = false)
+    private BigDecimal paidAmount = BigDecimal.ZERO;
 }
