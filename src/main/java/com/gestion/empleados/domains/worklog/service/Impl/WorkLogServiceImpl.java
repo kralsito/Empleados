@@ -39,6 +39,7 @@ public class WorkLogServiceImpl implements WorkLogService {
 
         WorkLog workLog = WorkLogMapper.MAPPER.toEntity(dto);
         workLog.setEmployee(employee);
+        workLog.setDescription(normalizeDescription(dto.getDescription()));
         workLog.setSalaryHourSnapshot(employee.getRole().getSalaryHour());
         workLog.setTotalDay(dto.getHoursWorked().multiply(employee.getRole().getSalaryHour()));
 
@@ -50,6 +51,7 @@ public class WorkLogServiceImpl implements WorkLogService {
     public WorkLogDTO update(Long id, WorkLogDTOin dto) {
         WorkLog workLog = getWorkLog(id);
 
+        workLog.setDescription(normalizeDescription(dto.getDescription()));
         workLog.setHoursWorked(dto.getHoursWorked());
         workLog.setTotalDay(dto.getHoursWorked().multiply(workLog.getSalaryHourSnapshot()));
 
@@ -103,5 +105,12 @@ public class WorkLogServiceImpl implements WorkLogService {
                 .getDayOfWeek()
                 .getDisplayName(TextStyle.FULL, new Locale("es", "AR")));
         return dto;
+    }
+
+    private String normalizeDescription(String description) {
+        if (description == null) return null;
+
+        String normalized = description.trim();
+        return normalized.isEmpty() ? null : normalized;
     }
 }

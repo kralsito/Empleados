@@ -2,6 +2,7 @@ package com.gestion.empleados.domains.payment.dto.request;
 
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotNull;
+import com.gestion.empleados.domains.payment.model.Payment;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -22,4 +23,7 @@ public class ApplyPaymentDTOin {
     private BigDecimal amount;
     @NotNull
     private Boolean complete;
+    @NotNull
+    private Payment.PaymentMethod paymentMethod;
+    private String paymentProof;
 }

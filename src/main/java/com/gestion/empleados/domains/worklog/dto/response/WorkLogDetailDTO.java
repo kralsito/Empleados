@@ -1,4 +1,4 @@
-package com.gestion.empleados.domains.payment.dto.response;
+package com.gestion.empleados.domains.worklog.dto.response;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -12,10 +12,15 @@ import java.time.LocalDate;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class AllocationDTO {
-    private Long worklogId;
+public class WorkLogDetailDTO {
+    private Long id;
+    private Long employeeId;
     private LocalDate date;
+    private String dayOfWeek;
     private String description;
     private BigDecimal hours;
+    private BigDecimal amount;
     private BigDecimal paidAmount;
+    private BigDecimal remaining;
+    private String status;
 }

@@ -18,6 +18,7 @@ public class WorkLogDTOin {
     private Long employeeId;
     @NotNull
     private LocalDate date;
+    private String description;
     @NotNull
     @DecimalMin("0.5")
     @DecimalMax("24.0")

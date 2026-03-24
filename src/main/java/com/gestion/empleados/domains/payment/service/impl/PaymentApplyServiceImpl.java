@@ -22,9 +22,12 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.TextStyle;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.stream.Collectors;
@@ -71,9 +74,7 @@ public class PaymentApplyServiceImpl implements PaymentApplyService {
             if (remainingToPay.compareTo(BigDecimal.ZERO) <= 0) break;
 
             BigDecimal pending = worklog.getTotalDay().subtract(worklog.getPaidAmount());
-            BigDecimal payNow = request.getComplete()
-                    ? pending
-                    : remainingToPay.min(pending);
+            BigDecimal payNow = remainingToPay.min(pending);
 
             if (payNow.compareTo(BigDecimal.ZERO) > 0) {
                 worklog.setPaidAmount(worklog.getPaidAmount().add(payNow));
@@ -97,6 +98,8 @@ public class PaymentApplyServiceImpl implements PaymentApplyService {
                 .paymentDate(request.getDate())
                 .amount(request.getAmount())
                 .paymentType(type)
+                .paymentMethod(request.getPaymentMethod())
+                .paymentProof(normalizeProof(request.getPaymentProof()))
                 .paid(true)
                 .paidAt(LocalDateTime.now())
                 .build();
@@ -126,10 +129,19 @@ public class PaymentApplyServiceImpl implements PaymentApplyService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<PaymentDetailDTO> getPaymentsForEmployee(Long employeeId) {
-        return paymentRepository.findAllByEmployeeId(employeeId)
+    public List<PaymentDetailDTO> getPaymentsForEmployee(Long employeeId, LocalDate from, LocalDate to) {
+        List<Payment> payments = (from != null && to != null)
+                ? paymentRepository.findAllByEmployeeIdAndPaymentDateBetweenOrderByPaymentDateDescPaidAtDescIdDesc(employeeId, from, to)
+                : paymentRepository.findAllByEmployeeIdOrderByPaymentDateDescPaidAtDescIdDesc(employeeId);
+
+        return payments
                 .stream()
                 .filter(p -> p.getPaymentType() != null)
+                .sorted(
+                        Comparator.comparing(Payment::getPaymentDate, Comparator.nullsLast(Comparator.reverseOrder()))
+                                .thenComparing(Payment::getPaidAt, Comparator.nullsLast(Comparator.reverseOrder()))
+                                .thenComparing(Payment::getId, Comparator.nullsLast(Comparator.reverseOrder()))
+                )
                 .map(p -> {
                     List<PaymentAllocation> allocations = allocationRepository.findAllByPaymentId(p.getId());
                     return toPaymentDetailDTO(p, allocations, employeeId);
@@ -159,11 +171,23 @@ public class PaymentApplyServiceImpl implements PaymentApplyService {
 
     private PaymentDetailDTO toPaymentDetailDTO(Payment p, List<PaymentAllocation> allocations, Long employeeId) {
         List<AllocationDTO> allocationDTOs = allocations.stream()
-                .map(a -> AllocationDTO.builder()
-                        .worklogId(a.getWorkLog().getId())
-                        .paidAmount(a.getPaidAmount())
-                        .build())
+                .map(a -> {
+                    WorkLog workLog = a.getWorkLog();
+                    BigDecimal allocatedHours = calculateAllocatedHours(workLog, a.getPaidAmount());
+
+                    return AllocationDTO.builder()
+                            .worklogId(workLog.getId())
+                            .date(workLog.getDate())
+                            .description(workLog.getDescription())
+                            .hours(allocatedHours)
+                            .paidAmount(a.getPaidAmount())
+                            .build();
+                })
                 .collect(Collectors.toList());
+
+        BigDecimal totalWorkedHours = allocations.stream()
+                .map(a -> calculateAllocatedHours(a.getWorkLog(), a.getPaidAmount()))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         return PaymentDetailDTO.builder()
                 .id(p.getId())
@@ -171,6 +195,10 @@ public class PaymentApplyServiceImpl implements PaymentApplyService {
                 .date(p.getPaymentDate())
                 .amount(p.getAmount())
                 .type(p.getPaymentType())
+                .paidAt(p.getPaidAt())
+                .paymentMethod(p.getPaymentMethod())
+                .paymentProof(p.getPaymentProof())
+                .totalWorkedHours(totalWorkedHours)
                 .assignedWorklogs(allocationDTOs)
                 .build();
     }
@@ -179,5 +207,22 @@ public class PaymentApplyServiceImpl implements PaymentApplyService {
         if (paidAmount.compareTo(BigDecimal.ZERO) == 0) return "PENDIENTE";
         if (paidAmount.compareTo(totalDay) >= 0) return "PAGADO";
         return "PARCIAL";
+    }
+
+    private String normalizeProof(String proof) {
+        if (proof == null) return null;
+
+        String normalized = proof.trim();
+        return normalized.isEmpty() ? null : normalized;
+    }
+
+    private BigDecimal calculateAllocatedHours(WorkLog workLog, BigDecimal paidAmount) {
+        if (workLog.getTotalDay() == null || workLog.getTotalDay().compareTo(BigDecimal.ZERO) <= 0) {
+            return BigDecimal.ZERO;
+        }
+
+        return workLog.getHoursWorked()
+                .multiply(paidAmount)
+                .divide(workLog.getTotalDay(), 4, RoundingMode.HALF_UP);
     }
 }

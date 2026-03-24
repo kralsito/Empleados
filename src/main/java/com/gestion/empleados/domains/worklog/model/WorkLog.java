@@ -2,14 +2,19 @@ package com.gestion.empleados.domains.worklog.model;
 
 import com.gestion.empleados.domains.employee.model.Employee;
 import jakarta.persistence.*;
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
 @Data
 @Builder
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@AllArgsConstructor
 @Entity
 @Table(name = "work_logs")
 public class WorkLog {

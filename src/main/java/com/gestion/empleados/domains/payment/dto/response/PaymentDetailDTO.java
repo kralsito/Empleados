@@ -8,6 +8,7 @@ import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Data
@@ -20,5 +21,9 @@ public class PaymentDetailDTO {
     private LocalDate date;
     private BigDecimal amount;
     private Payment.PaymentType type;
+    private LocalDateTime paidAt;
+    private Payment.PaymentMethod paymentMethod;
+    private String paymentProof;
+    private BigDecimal totalWorkedHours;
     private List<AllocationDTO> assignedWorklogs;
 }

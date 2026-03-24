@@ -13,10 +13,12 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @RestController
@@ -81,7 +83,10 @@ public class PaymentController {
 
     @GetMapping("/employee/{employeeId}")
     @Operation(summary = "Obtiene historial de pagos por empleado", security = { @SecurityRequirement(name = "bearer-jwt") })
-    public ResponseEntity<List<PaymentDetailDTO>> getPaymentsForEmployee(@PathVariable Long employeeId) {
-        return ResponseEntity.ok(paymentApplyService.getPaymentsForEmployee(employeeId));
+    public ResponseEntity<List<PaymentDetailDTO>> getPaymentsForEmployee(
+            @PathVariable Long employeeId,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+        return ResponseEntity.ok(paymentApplyService.getPaymentsForEmployee(employeeId, from, to));
     }
 }

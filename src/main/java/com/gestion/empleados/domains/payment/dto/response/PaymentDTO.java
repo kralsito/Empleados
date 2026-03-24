@@ -21,6 +21,7 @@ public class PaymentDTO {
     private BigDecimal totalHours;
     private BigDecimal totalAmount;
     private Payment.PaymentMethod paymentMethod;
+    private String paymentProof;
     private LocalDateTime paidAt;
     private boolean paid;
 }
