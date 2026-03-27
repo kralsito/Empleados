@@ -17,10 +17,12 @@ import com.gestion.empleados.domains.worklog.dto.response.WorkLogDetailDTO;
 import com.gestion.empleados.domains.worklog.model.WorkLog;
 import com.gestion.empleados.domains.worklog.repository.WorkLogRepository;
 import com.gestion.empleados.shared.exception.custom.BadRequestException;
+import com.gestion.empleados.shared.storage.FileStorageService;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
@@ -40,10 +42,11 @@ public class PaymentApplyServiceImpl implements PaymentApplyService {
     private final PaymentRepository paymentRepository;
     private final PaymentAllocationRepository allocationRepository;
     private final EmployeeRepository employeeRepository;
+    private final FileStorageService fileStorageService;
 
     @Override
     @Transactional
-    public ApplyPaymentDTO apply(ApplyPaymentDTOin request) {
+    public ApplyPaymentDTO apply(ApplyPaymentDTOin request) throws IOException {
         Employee employee = employeeRepository.findById(request.getEmployeeId())
                 .orElseThrow(() -> new BadRequestException(EmployeeError.EMPLOYEE_NOT_FOUND));
 
@@ -93,13 +96,15 @@ public class PaymentApplyServiceImpl implements PaymentApplyService {
                 ? Payment.PaymentType.COMPLETO
                 : Payment.PaymentType.PARCIAL;
 
+        String proofFilename = fileStorageService.store(request.getPaymentProof());
+
         Payment payment = Payment.builder()
                 .employee(employee)
                 .paymentDate(request.getDate())
                 .amount(request.getAmount())
                 .paymentType(type)
                 .paymentMethod(request.getPaymentMethod())
-                .paymentProof(normalizeProof(request.getPaymentProof()))
+                .paymentProof(proofFilename)
                 .paid(true)
                 .paidAt(LocalDateTime.now())
                 .build();
@@ -209,12 +214,6 @@ public class PaymentApplyServiceImpl implements PaymentApplyService {
         return "PARCIAL";
     }
 
-    private String normalizeProof(String proof) {
-        if (proof == null) return null;
-
-        String normalized = proof.trim();
-        return normalized.isEmpty() ? null : normalized;
-    }
 
     private BigDecimal calculateAllocatedHours(WorkLog workLog, BigDecimal paidAmount) {
         if (workLog.getTotalDay() == null || workLog.getTotalDay().compareTo(BigDecimal.ZERO) <= 0) {

@@ -8,16 +8,26 @@ import com.gestion.empleados.domains.payment.dto.response.PaymentDetailDTO;
 import com.gestion.empleados.domains.payment.service.PaymentApplyService;
 import com.gestion.empleados.domains.payment.service.PaymentService;
 import com.gestion.empleados.domains.worklog.dto.response.WorkLogDetailDTO;
+import com.gestion.empleados.shared.storage.FileStorageService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.UrlResource;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
+import java.net.MalformedURLException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -29,7 +39,7 @@ public class PaymentController {
 
     private final PaymentService paymentService;
     private final PaymentApplyService paymentApplyService;
-
+    private final FileStorageService fileStorageService;
 
     @PostMapping
     @Operation(summary = "Crea un pago", security = { @SecurityRequirement(name = "bearer-jwt") })
@@ -68,12 +78,62 @@ public class PaymentController {
         return ResponseEntity.noContent().build();
     }
 
+    // ─── Apply (multipart/form-data) ─────────────────────────────────────────
 
-    @PostMapping("/apply")
+    @PostMapping(value = "/apply", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @Operation(summary = "Aplica un pago con distribución FIFO", security = { @SecurityRequirement(name = "bearer-jwt") })
-    public ResponseEntity<ApplyPaymentDTO> apply(@Valid @RequestBody ApplyPaymentDTOin dto) {
+    public ResponseEntity<ApplyPaymentDTO> apply(
+            @RequestParam Long employeeId,
+            @RequestParam String date,
+            @RequestParam java.math.BigDecimal amount,
+            @RequestParam Boolean complete,
+            @RequestParam String paymentMethod,
+            @RequestParam(required = false) MultipartFile paymentProof
+    ) throws IOException {
+        ApplyPaymentDTOin dto = new ApplyPaymentDTOin();
+        dto.setEmployeeId(employeeId);
+        dto.setDate(LocalDate.parse(date));
+        dto.setAmount(amount);
+        dto.setComplete(complete);
+        dto.setPaymentMethod(com.gestion.empleados.domains.payment.model.Payment.PaymentMethod.valueOf(paymentMethod));
+        dto.setPaymentProof(paymentProof);
+
         return ResponseEntity.status(HttpStatus.CREATED).body(paymentApplyService.apply(dto));
     }
+
+    // ─── Serve proof file ─────────────────────────────────────────────────────
+
+    @GetMapping("/{id}/proof")
+    @Operation(summary = "Descarga el comprobante de un pago", security = { @SecurityRequirement(name = "bearer-jwt") })
+    public ResponseEntity<Resource> getProof(@PathVariable Long id) throws MalformedURLException {
+        PaymentDTO payment = paymentService.getById(id);
+
+        if (payment.getPaymentProof() == null) {
+            return ResponseEntity.notFound().build();
+        }
+
+        Path filePath = fileStorageService.resolve(payment.getPaymentProof());
+        Resource resource = new UrlResource(filePath.toUri());
+
+        if (!resource.exists() || !resource.isReadable()) {
+            return ResponseEntity.notFound().build();
+        }
+
+        String contentType;
+        try {
+            contentType = Files.probeContentType(filePath);
+        } catch (IOException e) {
+            contentType = MediaType.APPLICATION_OCTET_STREAM_VALUE;
+        }
+        if (contentType == null) contentType = MediaType.APPLICATION_OCTET_STREAM_VALUE;
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + payment.getPaymentProof() + "\"")
+                .contentType(MediaType.parseMediaType(contentType))
+                .body(resource);
+    }
+
+    // ─── Employee queries ─────────────────────────────────────────────────────
 
     @GetMapping("/employee/{employeeId}/worklogs")
     @Operation(summary = "Obtiene worklogs con estado de pago por empleado", security = { @SecurityRequirement(name = "bearer-jwt") })

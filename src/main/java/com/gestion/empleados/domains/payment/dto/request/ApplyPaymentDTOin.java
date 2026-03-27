@@ -6,6 +6,7 @@ import com.gestion.empleados.domains.payment.model.Payment;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -25,5 +26,5 @@ public class ApplyPaymentDTOin {
     private Boolean complete;
     @NotNull
     private Payment.PaymentMethod paymentMethod;
-    private String paymentProof;
+    private MultipartFile paymentProof; // archivo (opcional)
 }

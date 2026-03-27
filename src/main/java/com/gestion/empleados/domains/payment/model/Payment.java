@@ -42,9 +42,7 @@ public class Payment {
     @Enumerated(EnumType.STRING)
     private PaymentMethod paymentMethod;
 
-    @Lob
-    @Column(columnDefinition = "LONGTEXT")
-    private String paymentProof;
+    private String paymentProof; // nombre del archivo en ./uploads/proofs/
 
     private LocalDateTime paidAt;
     private boolean paid;
