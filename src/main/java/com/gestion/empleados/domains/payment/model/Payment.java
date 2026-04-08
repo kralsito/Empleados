@@ -42,6 +42,7 @@ public class Payment {
     @Enumerated(EnumType.STRING)
     private PaymentMethod paymentMethod;
 
+    @Column(length = 500)
     private String paymentProof; // nombre del archivo en ./uploads/proofs/
 
     private LocalDateTime paidAt;

@@ -42,14 +42,14 @@ public class SecurityConfig {
 
         httpSecurity.authorizeHttpRequests(
                 authorizeHttpRequests -> authorizeHttpRequests
-                        .requestMatchers("/auth/login","/auth/register"
-                        )
+                        .requestMatchers("/auth/login", "/auth/register")
                         .permitAll()
                         .requestMatchers(SWAGGER_WHITELIST)
                         .permitAll()
+                        .requestMatchers("/payments/*/proof")
+                        .permitAll()
                         .anyRequest()
                         .authenticated()
-
         );
         httpSecurity.sessionManagement(sessionManagement -> sessionManagement.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
         httpSecurity.authenticationProvider(authenticationProvider);
@@ -63,7 +63,7 @@ public class SecurityConfig {
         CorsConfiguration corsConfiguration = new CorsConfiguration();
 
         corsConfiguration.setAllowedOrigins(List.of("http://localhost:3000"));
-        corsConfiguration.setAllowedMethods(List.of("GET", "POST"));
+        corsConfiguration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE"));
         corsConfiguration.setAllowedHeaders(List.of("Authorization", "Content-Type"));
         corsConfiguration.addExposedHeader("X-Total-Count");
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
