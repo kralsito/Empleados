@@ -1,0 +1,30 @@
+package com.gestion.empleados.domains.payment.dto.request;
+
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.NotNull;
+import com.gestion.empleados.domains.payment.model.Payment;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.math.BigDecimal;
+import java.time.LocalDate;
+
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+public class ApplyPaymentDTOin {
+    @NotNull
+    private Long employeeId;
+    @NotNull
+    private LocalDate date;
+    @NotNull
+    @DecimalMin("0.01")
+    private BigDecimal amount;
+    @NotNull
+    private Boolean complete;
+    @NotNull
+    private Payment.PaymentMethod paymentMethod;
+    private MultipartFile paymentProof; // archivo (opcional)
+}

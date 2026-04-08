@@ -20,4 +20,5 @@ public class PaymentDTOin {
     private LocalDate periodEnd;
     @NotNull
     private Payment.PaymentMethod paymentMethod;
+    private String paymentProof;
 }

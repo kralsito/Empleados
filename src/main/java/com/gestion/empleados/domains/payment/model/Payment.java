@@ -10,6 +10,7 @@ import lombok.NoArgsConstructor;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Data
 @Builder
@@ -26,6 +27,13 @@ public class Payment {
     @JoinColumn(name = "employee_id")
     private Employee employee;
 
+    private LocalDate paymentDate;
+    private BigDecimal amount;
+
+    @Enumerated(EnumType.STRING)
+    private PaymentType paymentType;
+
+    // Campos anteriores, mantenerlos por compatibilidad
     private LocalDate periodStart;
     private LocalDate periodEnd;
     private BigDecimal totalHours;
@@ -34,8 +42,18 @@ public class Payment {
     @Enumerated(EnumType.STRING)
     private PaymentMethod paymentMethod;
 
+    @Column(length = 500)
+    private String paymentProof; // nombre del archivo en ./uploads/proofs/
+
     private LocalDateTime paidAt;
     private boolean paid;
+
+    @OneToMany(mappedBy = "payment", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<PaymentAllocation> allocations;
+
+    public enum PaymentType {
+        COMPLETO, PARCIAL
+    }
 
     public enum PaymentMethod {
         EFECTIVO, TRANSFERENCIA, COMBINADO

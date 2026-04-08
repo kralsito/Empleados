@@ -62,6 +62,7 @@ public class PaymentServiceImpl implements PaymentService {
                 .totalHours(totalHours)
                 .totalAmount(totalAmount)
                 .paymentMethod(dto.getPaymentMethod())
+                .paymentProof(dto.getPaymentProof())
                 .paid(false)
                 .build();
 
@@ -91,6 +92,7 @@ public class PaymentServiceImpl implements PaymentService {
         payment.setPeriodStart(dto.getPeriodStart());
         payment.setPeriodEnd(dto.getPeriodEnd());
         payment.setPaymentMethod(dto.getPaymentMethod());
+        payment.setPaymentProof(dto.getPaymentProof());
         payment.setTotalHours(totalHours);
         payment.setTotalAmount(totalAmount);
 
