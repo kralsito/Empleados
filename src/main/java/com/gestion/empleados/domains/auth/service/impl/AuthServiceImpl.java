@@ -26,9 +26,10 @@ public class AuthServiceImpl implements AuthService {
         this.authenticationManager = authenticationManager;
     }
 
-    public void register(UserDTOin dto) {
+    public void register(UserDTOin dto, User.UserRole role) {
         User user = UserMapper.MAPPER.toEntity(dto);
         user.setPassword(passwordEncoder.encode(dto.getPassword()));
+        user.setUserRole(role);
         userRepository.save(user);
     }
 
@@ -41,7 +42,7 @@ public class AuthServiceImpl implements AuthService {
                     )
             );
             User user = userRepository.findByEmail(dto.getEmail()).orElseThrow();
-            return new UserDTO(user.getId(), user.getEmail());
+            return new UserDTO(user.getId(), user.getEmail(), user.getUserRole());
         }catch (Exception ex){
             throw new UnauthorizedException(AuthError.AUTH_ERROR);
         }

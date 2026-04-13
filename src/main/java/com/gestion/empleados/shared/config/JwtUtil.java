@@ -5,6 +5,7 @@ import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.exceptions.JWTVerificationException;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import com.auth0.jwt.interfaces.JWTVerifier;
+import com.gestion.empleados.domains.user.model.User;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import java.util.Date;
@@ -42,12 +43,13 @@ public class JwtUtil {
         return true;
     }
 
-    public static String buildToken(String email, Long userId) {
+    public static String buildToken(String email, Long userId, User.UserRole role) {
         return JWT.create()
                 .withSubject(email)
                 .withIssuedAt(new Date())
                 .withExpiresAt(new Date(System.currentTimeMillis() + jwtExpiration))
                 .withClaim("userId", userId)
+                .withClaim("role", role.name())
                 .sign(signingAlgorithm);
     }
 
