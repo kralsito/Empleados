@@ -13,6 +13,7 @@ import com.gestion.empleados.domains.user.model.User;
 import com.gestion.empleados.domains.user.repository.UserRepository;
 import com.gestion.empleados.shared.config.AuthSupport;
 import com.gestion.empleados.shared.exception.custom.BadRequestException;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -20,39 +21,32 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
+@RequiredArgsConstructor
 public class RoleServiceImpl implements RoleService {
 
     private final RoleRepository roleRepository;
     private final UserRepository userRepository;
     private final EmployeeRepository employeeRepository;
 
-    public RoleServiceImpl(RoleRepository roleRepository, UserRepository userRepository, EmployeeRepository employeeRepository) {
-        this.roleRepository = roleRepository;
-        this.userRepository = userRepository;
-        this.employeeRepository = employeeRepository;
-    }
-
     @Override
-    public RoleDTO create(RoleDTOin dto){
+    public RoleDTO create(RoleDTOin dto) {
         Long userId = AuthSupport.getUserId();
-        Optional<User> user = userRepository.findById(userId);
-        if (user.isEmpty()) {
-            throw new BadRequestException(UserError.USER_NOT_LOGIN);
-        }
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new BadRequestException(UserError.USER_NOT_LOGIN));
         Role role = RoleMapper.MAPPER.toEntity(dto);
-        role = roleRepository.save(role);
-        return RoleMapper.MAPPER.toDto(role);
+        role.setUser(user);
+        return RoleMapper.MAPPER.toDto(roleRepository.save(role));
     }
 
     @Override
-    public RoleDTO getById(Long id){
-        Role role = getRole(id);
-        return RoleMapper.MAPPER.toDto(role);
+    public RoleDTO getById(Long id) {
+        return RoleMapper.MAPPER.toDto(getRole(id));
     }
 
     @Override
     public List<RoleDTO> getAll() {
-        return roleRepository.findAll()
+        Long userId = AuthSupport.getUserId();
+        return roleRepository.findAllByUserId(userId)
                 .stream()
                 .map(RoleMapper.MAPPER::toDto)
                 .collect(Collectors.toList());
@@ -75,11 +69,9 @@ public class RoleServiceImpl implements RoleService {
         roleRepository.delete(role);
     }
 
-    private Role getRole(Long id){
-        Optional<Role> roleOptional = roleRepository.findById(id);
-        if(roleOptional.isEmpty()){
-            throw new BadRequestException(RoleError.ROLE_NOT_FOUND);
-        }
-        return roleOptional.get();
+    private Role getRole(Long id) {
+        Long userId = AuthSupport.getUserId();
+        return roleRepository.findByIdAndUserId(id, userId)
+                .orElseThrow(() -> new BadRequestException(RoleError.ROLE_NOT_FOUND));
     }
 }

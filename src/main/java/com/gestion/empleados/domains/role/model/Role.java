@@ -1,5 +1,6 @@
 package com.gestion.empleados.domains.role.model;
 
+import com.gestion.empleados.domains.user.model.User;
 import jakarta.persistence.*;
 import lombok.Data;
 
@@ -14,4 +15,8 @@ public class Role {
     private Long id;
     private String name;
     private BigDecimal salaryHour;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", nullable = false)
+    private User user;
 }
