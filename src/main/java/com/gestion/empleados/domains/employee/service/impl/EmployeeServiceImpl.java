@@ -18,6 +18,7 @@ import com.gestion.empleados.domains.user.repository.UserRepository;
 import com.gestion.empleados.shared.config.AuthSupport;
 import com.gestion.empleados.shared.exception.custom.BadRequestException;
 import jakarta.transaction.Transactional;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -25,55 +26,64 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
+@RequiredArgsConstructor
 public class EmployeeServiceImpl implements EmployeeService {
 
     private final EmployeeRepository employeeRepository;
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
 
-    public EmployeeServiceImpl(EmployeeRepository employeeRepository, UserRepository userRepository, RoleRepository roleRepository) {
-        this.employeeRepository = employeeRepository;
-        this.userRepository = userRepository;
-        this.roleRepository = roleRepository;
-    }
-
     @Override
-    public EmployeeDTO create(EmployeeDTOin dto){
+    public EmployeeDTO create(EmployeeDTOin dto) {
         Long userId = AuthSupport.getUserId();
-        Optional<User> user = userRepository.findById(userId);
-        if (user.isEmpty()) {
-            throw new BadRequestException(UserError.USER_NOT_LOGIN);
-        }
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new BadRequestException(UserError.USER_NOT_LOGIN));
+        Role role = roleRepository.findByIdAndUserId(dto.getRoleId(), userId)
+                .orElseThrow(() -> new BadRequestException(RoleError.ROLE_NOT_FOUND));
+
         Employee employee = EmployeeMapper.MAPPER.toEntity(dto);
-        Role role = getRole(dto);
         employee.setRole(role);
+        employee.setUser(user);
         employee.setActive(true);
-        employee = employeeRepository.save(employee);
-        return EmployeeMapper.MAPPER.toDto(employee);
+
+        return EmployeeMapper.MAPPER.toDto(employeeRepository.save(employee));
     }
 
     @Override
     public List<EmployeeDTO> getAll() {
-        return employeeRepository.findAllByActiveTrue()
+        Long userId = AuthSupport.getUserId();
+        return employeeRepository.findAllByActiveTrueAndUserId(userId)
                 .stream()
                 .map(EmployeeMapper.MAPPER::toDto)
                 .collect(Collectors.toList());
     }
 
     @Override
-    public EmployeeDTO getById(Long id){
-        Employee employee = getEmployee(id);
-        return EmployeeMapper.MAPPER.toDto(employee);
+    public EmployeeDTO getById(Long id) {
+        return EmployeeMapper.MAPPER.toDto(getEmployee(id));
+    }
+
+    @Override
+    public List<EmployeeDTO> getByRole(Long roleId) {
+        Long userId = AuthSupport.getUserId();
+        return employeeRepository.findAllByRoleIdAndActiveTrueAndUserId(roleId, userId)
+                .stream()
+                .map(EmployeeMapper.MAPPER::toDto)
+                .collect(Collectors.toList());
     }
 
     @Override
     @Transactional
     public EmployeeDTO update(Long id, EmployeeDTOin dto) {
+        Long userId = AuthSupport.getUserId();
         Employee employee = getEmployee(id);
-        Role role = getRole(dto);
+        Role role = roleRepository.findByIdAndUserId(dto.getRoleId(), userId)
+                .orElseThrow(() -> new BadRequestException(RoleError.ROLE_NOT_FOUND));
+
         employee.setName(dto.getName());
         employee.setLastName(dto.getLastName());
         employee.setRole(role);
+
         return EmployeeMapper.MAPPER.toDto(employeeRepository.save(employee));
     }
 
@@ -84,29 +94,9 @@ public class EmployeeServiceImpl implements EmployeeService {
         employeeRepository.save(employee);
     }
 
-    @Override
-    public List<EmployeeDTO> getByRole(Long roleId) {
-        return employeeRepository.findAllByRoleIdAndActiveTrue(roleId)
-                .stream()
-                .map(EmployeeMapper.MAPPER::toDto)
-                .collect(Collectors.toList());
-    }
-
-    private Employee getEmployee(Long id){
-        Optional<Employee> employeeOptional = employeeRepository.findById(id);
-        if(employeeOptional.isEmpty()){
-            throw new BadRequestException(EmployeeError.EMPLOYEE_NOT_FOUND);
-        }
-        return employeeOptional.get();
-    }
-
-
-    private Role getRole(EmployeeDTOin dto){
-        Optional<Role> roleOptional = roleRepository.findById(dto.getRoleId());
-        if(roleOptional.isEmpty()){
-            throw new BadRequestException(RoleError.ROLE_NOT_FOUND);
-        }
-        Role role = roleOptional.get();
-        return role;
+    private Employee getEmployee(Long id) {
+        Long userId = AuthSupport.getUserId();
+        return employeeRepository.findByIdAndUserId(id, userId)
+                .orElseThrow(() -> new BadRequestException(EmployeeError.EMPLOYEE_NOT_FOUND));
     }
 }
