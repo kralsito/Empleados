@@ -1,6 +1,7 @@
 package com.gestion.empleados.domains.payment.model;
 
 import com.gestion.empleados.domains.employee.model.Employee;
+import com.gestion.empleados.domains.user.model.User;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -32,6 +33,10 @@ public class Payment {
 
     @Enumerated(EnumType.STRING)
     private PaymentType paymentType;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", nullable = false)
+    private User user;
 
     // Campos anteriores, mantenerlos por compatibilidad
     private LocalDate periodStart;

@@ -12,12 +12,12 @@ import java.time.LocalDate;
 import java.util.List;
 
 public interface WorkLogRepository extends JpaRepository<WorkLog, Long>, JpaSpecificationExecutor<WorkLog> {
-    List<WorkLog> findAllByEmployeeId(Long employeeId);
-    List<WorkLog> findAllByEmployeeIdAndDateBetween(Long employeeId, LocalDate from, LocalDate to);
-    List<WorkLog> findAllByDateBetween(LocalDate from, LocalDate to);
-    boolean existsByEmployeeIdAndDate(Long employeeId, LocalDate date);
+    List<WorkLog> findAllByEmployeeIdAndUserId(Long employeeId, Long userId);
+    List<WorkLog> findAllByEmployeeIdAndDateBetweenAndUserId(Long employeeId, LocalDate from, LocalDate to, Long userId);
+    List<WorkLog> findAllByDateBetweenAndUserId(LocalDate from, LocalDate to, Long userId);
+    boolean existsByEmployeeIdAndDateAndUserId(Long employeeId, LocalDate date, Long userId);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("SELECT w FROM WorkLog w WHERE w.employee.id = :employeeId AND w.paidAmount < w.totalDay ORDER BY w.date ASC")
-    List<WorkLog> findPendingByEmployeeIdOrderByDateAsc(@Param("employeeId") Long employeeId);
+    @Query("SELECT w FROM WorkLog w WHERE w.employee.id = :employeeId AND w.user.id = :userId AND w.paidAmount < w.totalDay ORDER BY w.date ASC")
+    List<WorkLog> findPendingByEmployeeIdAndUserIdOrderByDateAsc(@Param("employeeId") Long employeeId, @Param("userId") Long userId);
 }

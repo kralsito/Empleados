@@ -10,8 +10,12 @@ import com.gestion.empleados.domains.payment.mapper.PaymentMapper;
 import com.gestion.empleados.domains.payment.model.Payment;
 import com.gestion.empleados.domains.payment.repository.PaymentRepository;
 import com.gestion.empleados.domains.payment.service.PaymentService;
+import com.gestion.empleados.domains.user.error.UserError;
+import com.gestion.empleados.domains.user.model.User;
+import com.gestion.empleados.domains.user.repository.UserRepository;
 import com.gestion.empleados.domains.worklog.model.WorkLog;
 import com.gestion.empleados.domains.worklog.repository.WorkLogRepository;
+import com.gestion.empleados.shared.config.AuthSupport;
 import com.gestion.empleados.shared.exception.custom.BadRequestException;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -29,11 +33,16 @@ public class PaymentServiceImpl implements PaymentService {
     private final PaymentRepository paymentRepository;
     private final EmployeeRepository employeeRepository;
     private final WorkLogRepository workLogRepository;
+    private final UserRepository userRepository;
 
     @Override
     @Transactional
     public PaymentDTO create(PaymentDTOin dto) {
-        Employee employee = getEmployee(dto.getEmployeeId());
+        Long userId = AuthSupport.getUserId();
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new BadRequestException(UserError.USER_NOT_LOGIN));
+        Employee employee = employeeRepository.findByIdAndUserId(dto.getEmployeeId(), userId)
+                .orElseThrow(() -> new BadRequestException(EmployeeError.EMPLOYEE_NOT_FOUND));
 
         if (paymentRepository.existsByEmployeeIdAndPeriodStartAndPeriodEnd(
                 dto.getEmployeeId(), dto.getPeriodStart(), dto.getPeriodEnd())) {
@@ -41,7 +50,7 @@ public class PaymentServiceImpl implements PaymentService {
         }
 
         List<WorkLog> workLogs = workLogRepository
-                .findAllByEmployeeIdAndDateBetween(dto.getEmployeeId(), dto.getPeriodStart(), dto.getPeriodEnd());
+                .findAllByEmployeeIdAndDateBetweenAndUserId(dto.getEmployeeId(), dto.getPeriodStart(), dto.getPeriodEnd(), userId);
 
         if (workLogs.isEmpty()) {
             throw new BadRequestException(PaymentError.NO_WORKLOGS);
@@ -57,6 +66,7 @@ public class PaymentServiceImpl implements PaymentService {
 
         Payment payment = Payment.builder()
                 .employee(employee)
+                .user(user)
                 .periodStart(dto.getPeriodStart())
                 .periodEnd(dto.getPeriodEnd())
                 .totalHours(totalHours)
@@ -72,6 +82,7 @@ public class PaymentServiceImpl implements PaymentService {
     @Override
     @Transactional
     public PaymentDTO update(Long id, PaymentDTOin dto) {
+        Long userId = AuthSupport.getUserId();
         Payment payment = getPayment(id);
 
         if (payment.isPaid()) {
@@ -79,7 +90,7 @@ public class PaymentServiceImpl implements PaymentService {
         }
 
         List<WorkLog> workLogs = workLogRepository
-                .findAllByEmployeeIdAndDateBetween(dto.getEmployeeId(), dto.getPeriodStart(), dto.getPeriodEnd());
+                .findAllByEmployeeIdAndDateBetweenAndUserId(dto.getEmployeeId(), dto.getPeriodStart(), dto.getPeriodEnd(), userId);
 
         BigDecimal totalHours = workLogs.stream()
                 .map(WorkLog::getHoursWorked)
@@ -116,7 +127,8 @@ public class PaymentServiceImpl implements PaymentService {
 
     @Override
     public List<PaymentDTO> getAll() {
-        return paymentRepository.findAll()
+        Long userId = AuthSupport.getUserId();
+        return paymentRepository.findAllByUserId(userId)
                 .stream()
                 .map(PaymentMapper.MAPPER::toDto)
                 .collect(Collectors.toList());
@@ -124,7 +136,8 @@ public class PaymentServiceImpl implements PaymentService {
 
     @Override
     public List<PaymentDTO> getByEmployee(Long employeeId) {
-        return paymentRepository.findAllByEmployeeId(employeeId)
+        Long userId = AuthSupport.getUserId();
+        return paymentRepository.findAllByEmployeeIdAndUserId(employeeId, userId)
                 .stream()
                 .map(PaymentMapper.MAPPER::toDto)
                 .collect(Collectors.toList());
@@ -147,12 +160,14 @@ public class PaymentServiceImpl implements PaymentService {
     // ─── Helpers ─────────────────────────────────────────────────────────────
 
     private Employee getEmployee(Long id) {
-        return employeeRepository.findById(id)
+        Long userId = AuthSupport.getUserId();
+        return employeeRepository.findByIdAndUserId(id, userId)
                 .orElseThrow(() -> new BadRequestException(EmployeeError.EMPLOYEE_NOT_FOUND));
     }
 
     private Payment getPayment(Long id) {
-        return paymentRepository.findById(id)
+        Long userId = AuthSupport.getUserId();
+        return paymentRepository.findByIdAndUserId(id, userId)
                 .orElseThrow(() -> new BadRequestException(PaymentError.NOT_FOUND));
     }
 }
