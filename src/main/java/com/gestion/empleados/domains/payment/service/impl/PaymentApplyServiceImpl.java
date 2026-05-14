@@ -13,14 +13,18 @@ import com.gestion.empleados.domains.payment.model.PaymentAllocation;
 import com.gestion.empleados.domains.payment.repository.PaymentAllocationRepository;
 import com.gestion.empleados.domains.payment.repository.PaymentRepository;
 import com.gestion.empleados.domains.payment.service.PaymentApplyService;
+import com.gestion.empleados.domains.user.error.UserError;
+import com.gestion.empleados.domains.user.model.User;
+import com.gestion.empleados.domains.user.repository.UserRepository;
 import com.gestion.empleados.domains.worklog.dto.response.WorkLogDetailDTO;
 import com.gestion.empleados.domains.worklog.model.WorkLog;
 import com.gestion.empleados.domains.worklog.repository.WorkLogRepository;
+import com.gestion.empleados.shared.config.AuthSupport;
 import com.gestion.empleados.shared.exception.custom.BadRequestException;
 import com.gestion.empleados.shared.storage.FileStorageService;
-import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.io.IOException;
 import java.math.BigDecimal;
@@ -43,15 +47,19 @@ public class PaymentApplyServiceImpl implements PaymentApplyService {
     private final PaymentAllocationRepository allocationRepository;
     private final EmployeeRepository employeeRepository;
     private final FileStorageService fileStorageService;
+    private final UserRepository userRepository;
 
     @Override
     @Transactional
     public ApplyPaymentDTO apply(ApplyPaymentDTOin request) throws IOException {
-        Employee employee = employeeRepository.findById(request.getEmployeeId())
+        Long userId = AuthSupport.getUserId();
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new BadRequestException(UserError.USER_NOT_LOGIN));
+        Employee employee = employeeRepository.findByIdAndUserId(request.getEmployeeId(), userId)
                 .orElseThrow(() -> new BadRequestException(EmployeeError.EMPLOYEE_NOT_FOUND));
 
         List<WorkLog> pendingWorklogs = workLogRepository
-                .findPendingByEmployeeIdOrderByDateAsc(request.getEmployeeId());
+                .findPendingByEmployeeIdAndUserIdOrderByDateAsc(request.getEmployeeId(), userId);
 
         if (pendingWorklogs.isEmpty()) {
             throw new BadRequestException(PaymentError.NO_WORKLOGS);
@@ -100,6 +108,7 @@ public class PaymentApplyServiceImpl implements PaymentApplyService {
 
         Payment payment = Payment.builder()
                 .employee(employee)
+                .user(user)
                 .paymentDate(request.getDate())
                 .amount(request.getAmount())
                 .paymentType(type)
@@ -126,7 +135,8 @@ public class PaymentApplyServiceImpl implements PaymentApplyService {
     @Override
     @Transactional(readOnly = true)
     public List<WorkLogDetailDTO> getWorklogsForEmployee(Long employeeId) {
-        return workLogRepository.findAllByEmployeeId(employeeId)
+        Long userId = AuthSupport.getUserId();
+        return workLogRepository.findAllByEmployeeIdAndUserId(employeeId, userId)
                 .stream()
                 .map(this::toWorkLogDetailDTO)
                 .collect(Collectors.toList());
@@ -135,12 +145,13 @@ public class PaymentApplyServiceImpl implements PaymentApplyService {
     @Override
     @Transactional(readOnly = true)
     public List<PaymentDetailDTO> getPaymentsForEmployee(Long employeeId, LocalDate from, LocalDate to) {
-        List<Payment> payments = (from != null && to != null)
-                ? paymentRepository.findAllByEmployeeIdAndPaymentDateBetweenOrderByPaymentDateDescPaidAtDescIdDesc(employeeId, from, to)
-                : paymentRepository.findAllByEmployeeIdOrderByPaymentDateDescPaidAtDescIdDesc(employeeId);
+        Long userId = AuthSupport.getUserId();
 
-        return payments
-                .stream()
+        List<Payment> payments = (from != null && to != null)
+                ? paymentRepository.findAllByEmployeeIdAndUserIdAndPaymentDateBetweenOrderByPaymentDateDescPaidAtDescIdDesc(employeeId, userId, from, to)
+                : paymentRepository.findAllByEmployeeIdAndUserIdOrderByPaymentDateDescPaidAtDescIdDesc(employeeId, userId);
+
+        return payments.stream()
                 .filter(p -> p.getPaymentType() != null)
                 .sorted(
                         Comparator.comparing(Payment::getPaymentDate, Comparator.nullsLast(Comparator.reverseOrder()))
@@ -148,11 +159,13 @@ public class PaymentApplyServiceImpl implements PaymentApplyService {
                                 .thenComparing(Payment::getId, Comparator.nullsLast(Comparator.reverseOrder()))
                 )
                 .map(p -> {
-                    List<PaymentAllocation> allocations = allocationRepository.findAllByPaymentId(p.getId());
-                    return toPaymentDetailDTO(p, allocations, employeeId);
+                    List<PaymentAllocation> allocs = allocationRepository.findAllByPaymentId(p.getId());
+                    return toPaymentDetailDTO(p, allocs, employeeId);
                 })
                 .collect(Collectors.toList());
     }
+
+    // ─── Helpers ─────────────────────────────────────────────────────────────
 
     private WorkLogDetailDTO toWorkLogDetailDTO(WorkLog w) {
         BigDecimal remaining = w.getTotalDay().subtract(w.getPaidAmount());
@@ -179,7 +192,6 @@ public class PaymentApplyServiceImpl implements PaymentApplyService {
                 .map(a -> {
                     WorkLog workLog = a.getWorkLog();
                     BigDecimal allocatedHours = calculateAllocatedHours(workLog, a.getPaidAmount());
-
                     return AllocationDTO.builder()
                             .worklogId(workLog.getId())
                             .date(workLog.getDate())
@@ -214,12 +226,10 @@ public class PaymentApplyServiceImpl implements PaymentApplyService {
         return "PARCIAL";
     }
 
-
     private BigDecimal calculateAllocatedHours(WorkLog workLog, BigDecimal paidAmount) {
         if (workLog.getTotalDay() == null || workLog.getTotalDay().compareTo(BigDecimal.ZERO) <= 0) {
             return BigDecimal.ZERO;
         }
-
         return workLog.getHoursWorked()
                 .multiply(paidAmount)
                 .divide(workLog.getTotalDay(), 4, RoundingMode.HALF_UP);

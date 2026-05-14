@@ -41,15 +41,13 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()));
 
         httpSecurity.authorizeHttpRequests(
-                authorizeHttpRequests -> authorizeHttpRequests
-                        .requestMatchers("/auth/login", "/auth/register")
-                        .permitAll()
-                        .requestMatchers(SWAGGER_WHITELIST)
-                        .permitAll()
-                        .requestMatchers("/payments/*/proof")
-                        .permitAll()
-                        .anyRequest()
-                        .authenticated()
+                auth -> auth
+                        .requestMatchers("/auth/login", "/auth/register").permitAll()
+                        .requestMatchers(SWAGGER_WHITELIST).permitAll()
+                        .requestMatchers("/payments/*/proof").permitAll()
+                        .requestMatchers("/auth/users", "/auth/users/**").hasRole("ADMIN")
+                        .requestMatchers("/auth/admin/**").hasRole("ADMIN")
+                        .anyRequest().hasAnyRole("USER", "ADMIN")
         );
         httpSecurity.sessionManagement(sessionManagement -> sessionManagement.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
         httpSecurity.authenticationProvider(authenticationProvider);

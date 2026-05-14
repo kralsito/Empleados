@@ -6,11 +6,15 @@ import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 
 public interface PaymentRepository extends JpaRepository<Payment, Long>, JpaSpecificationExecutor<Payment> {
     List<Payment> findAllByEmployeeId(Long employeeId);
-    List<Payment> findAllByEmployeeIdOrderByPaymentDateDescPaidAtDescIdDesc(Long employeeId);
-    List<Payment> findAllByEmployeeIdAndPaymentDateBetweenOrderByPaymentDateDescPaidAtDescIdDesc(Long employeeId, LocalDate from, LocalDate to);
+    List<Payment> findAllByUserId(Long userId);
+    List<Payment> findAllByEmployeeIdAndUserId(Long employeeId, Long userId);
+    List<Payment> findAllByEmployeeIdAndUserIdOrderByPaymentDateDescPaidAtDescIdDesc(Long employeeId, Long userId);
+    List<Payment> findAllByEmployeeIdAndUserIdAndPaymentDateBetweenOrderByPaymentDateDescPaidAtDescIdDesc(Long employeeId, Long userId, LocalDate from, LocalDate to);
     List<Payment> findAllByPaid(boolean paid);
+    Optional<Payment> findByIdAndUserId(Long id, Long userId);
     boolean existsByEmployeeIdAndPeriodStartAndPeriodEnd(Long employeeId, LocalDate periodStart, LocalDate periodEnd);
 }

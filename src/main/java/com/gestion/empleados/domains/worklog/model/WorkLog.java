@@ -1,6 +1,7 @@
 package com.gestion.empleados.domains.worklog.model;
 
 import com.gestion.empleados.domains.employee.model.Employee;
+import com.gestion.empleados.domains.user.model.User;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
@@ -25,6 +26,10 @@ public class WorkLog {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "employee_id")
     private Employee employee;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", nullable = false)
+    private User user;
 
     private LocalDate date;
     private String description;
