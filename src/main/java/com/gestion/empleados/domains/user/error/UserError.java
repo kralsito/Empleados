@@ -3,7 +3,9 @@ package com.gestion.empleados.domains.user.error;
 import com.gestion.empleados.shared.exception.error.ErrorCode;
 
 public enum UserError implements ErrorCode {
-    USER_NOT_LOGIN("001", "USER","No se encontró ningun usuario logueado");
+    USER_NOT_LOGIN("001", "USER", "No se encontro ningun usuario logueado"),
+    USER_NOT_FOUND("002", "USER", "No se encontro el usuario"),
+    EMAIL_ALREADY_EXISTS("003", "USER", "Ya existe un usuario con ese email");
 
     private final String code;
 
@@ -32,4 +34,3 @@ public enum UserError implements ErrorCode {
         return model;
     }
 }
-

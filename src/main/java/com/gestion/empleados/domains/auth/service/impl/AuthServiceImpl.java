@@ -5,14 +5,18 @@ import com.gestion.empleados.domains.auth.error.AuthError;
 import com.gestion.empleados.domains.auth.service.AuthService;
 import com.gestion.empleados.domains.user.dto.request.UserDTOin;
 import com.gestion.empleados.domains.user.dto.response.UserDTO;
+import com.gestion.empleados.domains.user.error.UserError;
 import com.gestion.empleados.domains.user.mapper.UserMapper;
 import com.gestion.empleados.domains.user.model.User;
 import com.gestion.empleados.domains.user.repository.UserRepository;
+import com.gestion.empleados.shared.exception.custom.BadRequestException;
 import com.gestion.empleados.shared.exception.custom.UnauthorizedException;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+
+import java.util.List;
 
 @Service
 public class AuthServiceImpl implements AuthService {
@@ -27,6 +31,10 @@ public class AuthServiceImpl implements AuthService {
     }
 
     public void register(UserDTOin dto, User.UserRole role) {
+        if (userRepository.existsByEmail(dto.getEmail())) {
+            throw new BadRequestException(UserError.EMAIL_ALREADY_EXISTS);
+        }
+
         User user = UserMapper.MAPPER.toEntity(dto);
         user.setPassword(passwordEncoder.encode(dto.getPassword()));
         user.setUserRole(role);
@@ -46,5 +54,42 @@ public class AuthServiceImpl implements AuthService {
         }catch (Exception ex){
             throw new UnauthorizedException(AuthError.AUTH_ERROR);
         }
+    }
+
+    public List<UserDTO> getUsers() {
+        return userRepository.findAllByUserRoleOrderByEmailAsc(User.UserRole.USER)
+                .stream()
+                .map(this::toDto)
+                .toList();
+    }
+
+    public UserDTO updateUser(Long id, UserDTOin dto) {
+        User user = userRepository.findByIdAndUserRole(id, User.UserRole.USER)
+                .orElseThrow(() -> new BadRequestException(UserError.USER_NOT_FOUND));
+
+        userRepository.findByEmail(dto.getEmail())
+                .filter(existing -> !existing.getId().equals(id))
+                .ifPresent(existing -> {
+                    throw new BadRequestException(UserError.EMAIL_ALREADY_EXISTS);
+                });
+
+        user.setEmail(dto.getEmail());
+
+        if (dto.getPassword() != null && !dto.getPassword().isBlank()) {
+            user.setPassword(passwordEncoder.encode(dto.getPassword()));
+        }
+
+        return toDto(userRepository.save(user));
+    }
+
+    public void deleteUser(Long id) {
+        User user = userRepository.findByIdAndUserRole(id, User.UserRole.USER)
+                .orElseThrow(() -> new BadRequestException(UserError.USER_NOT_FOUND));
+
+        userRepository.delete(user);
+    }
+
+    private UserDTO toDto(User user) {
+        return new UserDTO(user.getId(), user.getEmail(), user.getUserRole());
     }
 }
