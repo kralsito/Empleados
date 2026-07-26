@@ -17,12 +17,15 @@ import com.gestion.empleados.domains.user.error.UserError;
 import com.gestion.empleados.domains.user.model.User;
 import com.gestion.empleados.domains.user.repository.UserRepository;
 import com.gestion.empleados.domains.worklog.dto.response.WorkLogDetailDTO;
+import com.gestion.empleados.domains.worklog.dto.response.WorkLogSummaryDTO;
 import com.gestion.empleados.domains.worklog.model.WorkLog;
 import com.gestion.empleados.domains.worklog.repository.WorkLogRepository;
 import com.gestion.empleados.shared.config.AuthSupport;
 import com.gestion.empleados.shared.exception.custom.BadRequestException;
 import com.gestion.empleados.shared.storage.FileStorageService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -134,12 +137,26 @@ public class PaymentApplyServiceImpl implements PaymentApplyService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<WorkLogDetailDTO> getWorklogsForEmployee(Long employeeId) {
+    public Page<WorkLogDetailDTO> getWorklogsForEmployee(Long employeeId, Boolean paid, Pageable pageable) {
         Long userId = AuthSupport.getUserId();
-        return workLogRepository.findAllByEmployeeIdAndUserId(employeeId, userId)
-                .stream()
-                .map(this::toWorkLogDetailDTO)
-                .collect(Collectors.toList());
+
+        Page<WorkLog> page;
+        if (Boolean.TRUE.equals(paid)) {
+            page = workLogRepository.findPaidPageByEmployeeIdAndUserId(employeeId, userId, pageable);
+        } else if (Boolean.FALSE.equals(paid)) {
+            page = workLogRepository.findPendingPageByEmployeeIdAndUserId(employeeId, userId, pageable);
+        } else {
+            page = workLogRepository.findPageByEmployeeIdAndUserId(employeeId, userId, pageable);
+        }
+
+        return page.map(this::toWorkLogDetailDTO);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public WorkLogSummaryDTO getWorklogsSummary(Long employeeId) {
+        Long userId = AuthSupport.getUserId();
+        return workLogRepository.getSummaryByEmployeeIdAndUserId(employeeId, userId);
     }
 
     @Override

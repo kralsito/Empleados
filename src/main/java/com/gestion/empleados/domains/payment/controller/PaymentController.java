@@ -8,6 +8,7 @@ import com.gestion.empleados.domains.payment.dto.response.PaymentDetailDTO;
 import com.gestion.empleados.domains.payment.service.PaymentApplyService;
 import com.gestion.empleados.domains.payment.service.PaymentService;
 import com.gestion.empleados.domains.worklog.dto.response.WorkLogDetailDTO;
+import com.gestion.empleados.domains.worklog.dto.response.WorkLogSummaryDTO;
 import com.gestion.empleados.shared.storage.FileStorageService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -16,6 +17,10 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -136,9 +141,21 @@ public class PaymentController {
     // ─── Employee queries ─────────────────────────────────────────────────────
 
     @GetMapping("/employee/{employeeId}/worklogs")
-    @Operation(summary = "Obtiene worklogs con estado de pago por empleado", security = { @SecurityRequirement(name = "bearer-jwt") })
-    public ResponseEntity<List<WorkLogDetailDTO>> getWorklogsForEmployee(@PathVariable Long employeeId) {
-        return ResponseEntity.ok(paymentApplyService.getWorklogsForEmployee(employeeId));
+    @Operation(summary = "Obtiene worklogs paginados con estado de pago por empleado", security = { @SecurityRequirement(name = "bearer-jwt") })
+    public ResponseEntity<Page<WorkLogDetailDTO>> getWorklogsForEmployee(
+            @PathVariable Long employeeId,
+            @RequestParam(required = false) Boolean paid,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "date"));
+        return ResponseEntity.ok(paymentApplyService.getWorklogsForEmployee(employeeId, paid, pageable));
+    }
+
+    @GetMapping("/employee/{employeeId}/worklogs/summary")
+    @Operation(summary = "Obtiene el resumen de montos y cantidades de worklogs por empleado", security = { @SecurityRequirement(name = "bearer-jwt") })
+    public ResponseEntity<WorkLogSummaryDTO> getWorklogsSummary(@PathVariable Long employeeId) {
+        return ResponseEntity.ok(paymentApplyService.getWorklogsSummary(employeeId));
     }
 
     @GetMapping("/employee/{employeeId}")
