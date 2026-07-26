@@ -16,5 +16,7 @@ public interface PaymentApplyService {
     ApplyPaymentDTO apply(ApplyPaymentDTOin request) throws IOException;
     Page<WorkLogDetailDTO> getWorklogsForEmployee(Long employeeId, Boolean paid, Pageable pageable);
     WorkLogSummaryDTO getWorklogsSummary(Long employeeId);
-    List<PaymentDetailDTO> getPaymentsForEmployee(Long employeeId, LocalDate from, LocalDate to);
+    Page<PaymentDetailDTO> getPaymentsForEmployee(Long employeeId, LocalDate from, LocalDate to, Pageable pageable);
+    List<WorkLogDetailDTO> getWorklogsByRange(Long employeeId, LocalDate from, LocalDate to);
+
 }

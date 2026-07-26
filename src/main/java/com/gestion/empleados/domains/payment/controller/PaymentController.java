@@ -159,11 +159,28 @@ public class PaymentController {
     }
 
     @GetMapping("/employee/{employeeId}")
-    @Operation(summary = "Obtiene historial de pagos por empleado", security = { @SecurityRequirement(name = "bearer-jwt") })
-    public ResponseEntity<List<PaymentDetailDTO>> getPaymentsForEmployee(
+    @Operation(summary = "Obtiene historial de pagos paginado por empleado", security = { @SecurityRequirement(name = "bearer-jwt") })
+    public ResponseEntity<Page<PaymentDetailDTO>> getPaymentsForEmployee(
             @PathVariable Long employeeId,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
-        return ResponseEntity.ok(paymentApplyService.getPaymentsForEmployee(employeeId, from, to));
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        Sort sort = Sort.by(Sort.Direction.DESC, "paymentDate")
+                .and(Sort.by(Sort.Direction.DESC, "paidAt"))
+                .and(Sort.by(Sort.Direction.DESC, "id"));
+        Pageable pageable = PageRequest.of(page, size, sort);
+        return ResponseEntity.ok(paymentApplyService.getPaymentsForEmployee(employeeId, from, to, pageable));
+    }
+
+    @GetMapping("/employee/{employeeId}/worklogs/range")
+    @Operation(summary = "Obtiene worklogs sin paginar dentro de un rango de fechas", security = { @SecurityRequirement(name = "bearer-jwt") })
+    public ResponseEntity<List<WorkLogDetailDTO>> getWorklogsByRange(
+            @PathVariable Long employeeId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to
+    ) {
+        return ResponseEntity.ok(paymentApplyService.getWorklogsByRange(employeeId, from, to));
     }
 }

@@ -134,14 +134,6 @@ public class PaymentServiceImpl implements PaymentService {
                 .collect(Collectors.toList());
     }
 
-    @Override
-    public List<PaymentDTO> getByEmployee(Long employeeId) {
-        Long userId = AuthSupport.getUserId();
-        return paymentRepository.findAllByEmployeeIdAndUserId(employeeId, userId)
-                .stream()
-                .map(PaymentMapper.MAPPER::toDto)
-                .collect(Collectors.toList());
-    }
 
     @Override
     public PaymentDTO getById(Long id) {

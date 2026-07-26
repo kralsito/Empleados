@@ -35,10 +35,7 @@ import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.TextStyle;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Locale;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -161,24 +158,36 @@ public class PaymentApplyServiceImpl implements PaymentApplyService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<PaymentDetailDTO> getPaymentsForEmployee(Long employeeId, LocalDate from, LocalDate to) {
+    public Page<PaymentDetailDTO> getPaymentsForEmployee(Long employeeId, LocalDate from, LocalDate to, Pageable pageable) {
         Long userId = AuthSupport.getUserId();
 
-        List<Payment> payments = (from != null && to != null)
-                ? paymentRepository.findAllByEmployeeIdAndUserIdAndPaymentDateBetweenOrderByPaymentDateDescPaidAtDescIdDesc(employeeId, userId, from, to)
-                : paymentRepository.findAllByEmployeeIdAndUserIdOrderByPaymentDateDescPaidAtDescIdDesc(employeeId, userId);
+        Page<Payment> page = (from != null && to != null)
+                ? paymentRepository.findAllByEmployeeIdAndUserIdAndPaymentDateBetween(employeeId, userId, from, to, pageable)
+                : paymentRepository.findAllByEmployeeIdAndUserId(employeeId, userId, pageable);
 
-        return payments.stream()
-                .filter(p -> p.getPaymentType() != null)
-                .sorted(
-                        Comparator.comparing(Payment::getPaymentDate, Comparator.nullsLast(Comparator.reverseOrder()))
-                                .thenComparing(Payment::getPaidAt, Comparator.nullsLast(Comparator.reverseOrder()))
-                                .thenComparing(Payment::getId, Comparator.nullsLast(Comparator.reverseOrder()))
-                )
-                .map(p -> {
-                    List<PaymentAllocation> allocs = allocationRepository.findAllByPaymentId(p.getId());
-                    return toPaymentDetailDTO(p, allocs, employeeId);
-                })
+        List<Long> paymentIds = page.getContent().stream()
+                .map(Payment::getId)
+                .collect(Collectors.toList());
+
+        Map<Long, List<PaymentAllocation>> allocationsByPayment = allocationRepository
+                .findAllByPaymentIdIn(paymentIds)
+                .stream()
+                .collect(Collectors.groupingBy(a -> a.getPayment().getId()));
+
+        return page.map(p -> toPaymentDetailDTO(
+                p,
+                allocationsByPayment.getOrDefault(p.getId(), List.of()),
+                employeeId
+        ));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<WorkLogDetailDTO> getWorklogsByRange(Long employeeId, LocalDate from, LocalDate to) {
+        Long userId = AuthSupport.getUserId();
+        return workLogRepository.findAllByEmployeeIdAndDateBetweenAndUserId(employeeId, from, to, userId)
+                .stream()
+                .map(this::toWorkLogDetailDTO)
                 .collect(Collectors.toList());
     }
 

@@ -10,7 +10,6 @@ public interface PaymentService {
     PaymentDTO update(Long id, PaymentDTOin dto);
     PaymentDTO pay(Long id);
     List<PaymentDTO> getAll();
-    List<PaymentDTO> getByEmployee(Long employeeId);
     PaymentDTO getById(Long id);
     void delete(Long id);
 }
